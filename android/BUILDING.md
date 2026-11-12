@@ -125,3 +125,28 @@ docker rm otc-build
 
 ### 32-bit build fails with `gcc -m32`
 - Install `gcc-multilib`: `sudo apt install gcc-multilib g++-multilib`
+
+## Supplying client assets (no automatic download)
+
+Automatic asset download is disabled by default (`Services.clientAssets.enabled = false` in `init.lua`).
+Assets must be provided manually from a trusted source (e.g. the official Tibia client's `assets` folder).
+
+On Android, copy them into the app's external files dir, under `import/`, keeping the OTC-standard layout:
+
+```
+/sdcard/Android/data/com.github.otclient/files/import/data/things/<version>/   (catalog-content.json, appearances, sprites, staticdata...)
+/sdcard/Android/data/com.github.otclient/files/import/data/sounds/<version>/   (optional)
+```
+
+Example with adb (version 1412):
+
+```bash
+adb shell mkdir -p /sdcard/Android/data/com.github.otclient/files/import/data/things
+adb push ./assets /sdcard/Android/data/com.github.otclient/files/import/data/things/1412
+```
+
+The app must have been opened at least once so Android creates the `files` dir.
+On the next launch, `AndroidManager::importExternalAssets()` copies each numeric `<version>` folder into the
+runtime path `game_data/data/things/<version>/` (and `data/sounds/<version>/`), then deletes the staging copy.
+Only `data/things` and `data/sounds` are imported; anything else under `import/` is ignored, and symlinks are skipped.
+Check `adb logcat | grep "\[android\] Import"` for the result.

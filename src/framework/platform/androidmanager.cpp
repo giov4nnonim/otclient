@@ -27,6 +27,11 @@
 #include <framework/core/resourcemanager.h>
 #include <framework/sound/soundmanager.h>
 
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <vector>
+
 AndroidManager g_androidManager;
 
 AndroidManager::~AndroidManager() {
@@ -141,6 +146,67 @@ void AndroidManager::unZipAssetData() {
 
     AAsset_close(dataAsset);
     free(dataContent);
+}
+
+void AndroidManager::importExternalAssets() {
+    if (!m_app || !m_app->activity || !m_app->activity->externalDataPath) {
+        g_logger.info("[android] No external files dir available, skipping asset import");
+        return;
+    }
+
+    namespace fs = std::filesystem;
+    const fs::path importRoot = fs::path(m_app->activity->externalDataPath) / "import";
+    const fs::path workDir = fs::path(getAppBaseDir()) / "game_data";
+
+    // Only the OTC-standard asset locations are accepted.
+    for (const char* subDir : { "data/things", "data/sounds" }) {
+        const fs::path source = importRoot / subDir;
+        std::error_code ec;
+        if (!fs::is_directory(source, ec))
+            continue;
+
+        // Collect first: the staging dirs are removed after copying.
+        std::vector<fs::path> versionDirs;
+        for (const auto& entry : fs::directory_iterator(source, ec)) {
+            std::error_code entryEc;
+            const auto name = entry.path().filename().string();
+            const bool isVersion = !name.empty() && std::all_of(name.begin(), name.end(), [](const unsigned char c) { return std::isdigit(c); });
+            if (isVersion && entry.is_directory(entryEc))
+                versionDirs.emplace_back(entry.path());
+        }
+        if (ec) {
+            g_logger.error("[android] Unable to list '{}': {}", source.string(), ec.message());
+            continue;
+        }
+
+        for (const auto& versionDir : versionDirs) {
+            const auto versionName = versionDir.filename().string();
+            const fs::path destination = workDir / subDir / versionName;
+
+            g_logger.info("[android] Importing assets '{}' -> '{}'", versionDir.string(), destination.string());
+
+            std::error_code copyEc;
+            fs::create_directories(destination, copyEc);
+            if (!copyEc) {
+                fs::copy(versionDir, destination,
+                         fs::copy_options::recursive | fs::copy_options::overwrite_existing | fs::copy_options::skip_symlinks,
+                         copyEc);
+            }
+
+            if (copyEc) {
+                g_logger.error("[android] Failed to import assets from '{}': {}", versionDir.string(), copyEc.message());
+                continue;
+            }
+
+            // Staging is transient: remove it once the copy succeeded.
+            std::error_code removeEc;
+            fs::remove_all(versionDir, removeEc);
+            if (removeEc)
+                g_logger.warning("[android] Imported '{}' but could not remove staging copy: {}", versionName, removeEc.message());
+            else
+                g_logger.info("[android] Imported assets for '{}' ({})", versionName, subDir);
+        }
+    }
 }
 
 std::string AndroidManager::getAppBaseDir() {

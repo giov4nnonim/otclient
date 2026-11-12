@@ -43,6 +43,10 @@ public:
     void hideInputPreview();
 
     void unZipAssetData();
+    // Moves user-supplied client assets from the app's external files dir
+    // (<external>/import/data/{things,sounds}/<version>/) into the work dir
+    // (game_data/data/...). The import folder is transient staging only.
+    void importExternalAssets();
 
     std::string getClipboardText();
     void setClipboardText(const std::string& text);

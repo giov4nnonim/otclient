@@ -123,6 +123,8 @@ int main(const int argc, const char* argv[])
         ALOGD("main: starting unZipAssetData...");
         g_androidManager.unZipAssetData();
         ALOGD("main: unZipAssetData complete");
+        g_androidManager.importExternalAssets();
+        ALOGD("main: importExternalAssets complete");
         g_resources.init(nullptr);
         ALOGD("main: resources init done");
 #else
