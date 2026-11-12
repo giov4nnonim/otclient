@@ -8,8 +8,11 @@ Services = {
     --websites = "http://localhost/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
     --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
     --getCoinsUrl = "http://localhost/?subtopic=shop&step=terms", --./game_market
+    -- Automatic asset download is disabled: assets are supplied manually from a
+    -- trusted source (official client) into data/things/<version>/.
+    -- Set enabled = true to restore the automatic download from `repository`.
     clientAssets = {
-        enabled = true,
+        enabled = false,
         repository = "dudantas/tibia-client",
         installSounds = true,
         strictManifestSha256 = true,
